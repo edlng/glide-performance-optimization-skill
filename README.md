@@ -1,0 +1,164 @@
+# GLIDE Performance Optimization Skill
+
+Expert guidance for optimizing Valkey GLIDE clients across Node.js, Python, Java, and Go. This skill provides context-aware performance optimization feedback through AI development tools (Kiro, Claude, WindSurf, VS Code).
+
+## Features
+
+- **Progressive Disclosure**: Loads only relevant language-specific patterns, reducing context usage by 60-85%
+- **Multi-Language Support**: Node.js, Python, Java, and Go
+- **Automatic Language Detection**: Detects language from file extensions, imports, and syntax
+- **Actionable Recommendations**: Provides before/after code examples and configuration guidance
+- **Anti-Pattern Detection**: Identifies common performance issues like per-request client creation, missing timeouts, sequential operations
+
+## Installation
+
+### Kiro
+
+```bash
+# Clone into Kiro skills directory
+git clone https://github.com/valkey-io/glide-performance-skill ~/.kiro/skills/glide-performance
+```
+
+### Claude Desktop
+
+```bash
+# Clone into Claude skills directory
+git clone https://github.com/valkey-io/glide-performance-skill ~/.claude/skills/glide-performance
+```
+
+### WindSurf / VS Code
+
+```bash
+# Clone into your IDE's skills directory
+git clone https://github.com/valkey-io/glide-performance-skill ~/.windsurf/skills/glide-performance
+# or
+git clone https://github.com/valkey-io/glide-performance-skill ~/.vscode/skills/glide-performance
+```
+
+### Manual Installation
+
+1. Download or clone this repository
+2. Copy the entire directory to your AI tool's skills folder
+3. Restart your AI tool if necessary
+
+## Usage
+
+### Basic Code Review
+
+1. Open a file containing Valkey GLIDE client code (e.g., `userService.js`)
+2. Request code review: "Review this code for Valkey performance issues"
+3. The skill automatically:
+   - Loads core principles and anti-patterns
+   - Detects your programming language
+   - Loads language-specific patterns on-demand
+   - Provides targeted recommendations with code examples
+
+### Example Prompts
+
+**General Review**:
+- "Review this code for Valkey performance issues"
+- "Check for GLIDE anti-patterns in this file"
+- "Optimize this Valkey client code"
+
+**Specific Issues**:
+- "Is this client configuration optimal?"
+- "Should I use batching here?"
+- "How can I reduce latency in this code?"
+- "Review my error handling strategy"
+
+**Migration Help**:
+- "Help me migrate from node-redis to GLIDE"
+- "Convert this redis-py code to use GLIDE"
+- "What GLIDE features can improve this Jedis code?"
+
+## What Gets Loaded
+
+The skill uses progressive disclosure to minimize context usage:
+
+### Always Loaded (Core)
+- `SKILL.md` - Universal anti-patterns and optimization strategies (~200 lines)
+
+### Loaded On-Demand (Language-Specific)
+- `reference/nodejs-patterns.md` - Node.js/TypeScript patterns (loaded only for .js/.ts files)
+- `reference/python-patterns.md` - Python patterns (loaded only for .py files)
+- `reference/java-patterns.md` - Java patterns (loaded only for .java files)
+- `reference/go-patterns.md` - Go patterns (loaded only for .go files)
+
+**Context Efficiency**: Reviewing Node.js code loads only Node.js patterns. Python/Java/Go patterns remain unloaded.
+
+## Common Anti-Patterns Detected
+
+1. **Per-Request Client Creation** - Creating clients inside request handlers
+2. **Missing Request Timeouts** - No timeout configuration
+3. **Sequential Operations** - Not using batching or concurrency
+4. **Blocking Commands on Shared Client** - BLPOP/BRPOP blocking other operations
+5. **Large Batch Sizes** - Batches with >1000 operations
+6. **Missing Error Handling** - No retry strategy or error handling
+
+## Optimization Strategies Provided
+
+1. **Batching** - Pipeline and transaction patterns
+2. **Cluster-Aware Operations** - Hash tags for co-location
+3. **AZ Affinity** - Cost optimization for read-heavy workloads
+4. **Async/Concurrent Patterns** - Reducing wall-clock time
+5. **Data Size Optimization** - Hash structures vs JSON strings
+6. **Configuration Tuning** - Timeouts, retries, connection pools
+
+## Architecture
+
+```
+glide-performance-skill/
+├── SKILL.md                          # Core skill (~200 lines, always loaded)
+├── README.md                         # This file
+├── reference/                        # On-demand loaded guides
+│   ├── nodejs-patterns.md            # Node.js/TypeScript specific
+│   ├── python-patterns.md            # Python specific
+│   ├── java-patterns.md              # Java specific
+│   └── go-patterns.md                # Go specific
+└── assets/
+    └── performance-checklist.md      # Quick reference
+```
+
+## Performance Impact
+
+Typical improvements when moving from anti-patterns to recommended patterns:
+
+| Optimization | Latency Impact | Throughput Impact | Complexity |
+|--------------|----------------|-------------------|------------|
+| Connection Reuse | Eliminates per-request overhead | Significant increase | Low |
+| Batching | Reduces to single roundtrip | Scales with batch size | Low-Medium |
+| AZ Affinity | Lower same-AZ latency | Moderate increase | Medium |
+| Async Patterns | Reduces wall-clock time | Scales with concurrency | Medium |
+| Cluster Hash Tags | Fewer cross-shard hops | Moderate increase | Medium-High |
+
+**Note**: Actual results vary based on your specific use case. Always benchmark to measure impact.
+
+## Supported GLIDE Versions
+
+- Node.js: `@valkey/valkey-glide` v1.0.0+
+- Python: `valkey-glide` v1.0.0+
+- Java: `glide-for-redis` v1.0.0+
+- Go: `valkey-glide/go` v1.0.0+
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## License
+
+This skill is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for details.
+
+## Additional Resources
+
+- [Valkey GLIDE Repository](https://github.com/valkey-io/valkey-glide)
+- [GLIDE Wiki](https://github.com/valkey-io/valkey-glide/wiki)
+- [AZ Affinity Blog](https://valkey.io/blog/az-affinity-strategy/)
+- [Benchmarks](https://github.com/valkey-io/valkey-glide/tree/main/benchmarks)
+- [Examples](https://github.com/valkey-io/valkey-glide/tree/main/examples)
+
+## Support
+
+For issues or questions:
+- Open an issue on [GitHub](https://github.com/valkey-io/glide-performance-skill/issues)
+- Join the [Valkey Community](https://valkey.io/community/)
+- Check the [GLIDE Wiki](https://github.com/valkey-io/valkey-glide/wiki)
