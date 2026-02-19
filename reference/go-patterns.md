@@ -10,8 +10,8 @@ Language-specific optimization patterns for Go implementations using `valkey-gli
 ```go
 // NEVER do this - creates new connection per request
 func handleRequest(w http.ResponseWriter, r *http.Request) {
-    client, err := glide.NewClient(&glide.ClientConfiguration{
-        Addresses: []glide.NodeAddress{{Host: "localhost", Port: 6379}},
+    client, err := glide.NewClient(&config.ClientConfiguration{
+        Addresses: []config.NodeAddress{{Host: "localhost", Port: 6379}},
     })
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -37,14 +37,15 @@ import (
     "syscall"
     
     "github.com/valkey-io/valkey-glide/go/v2"
+    "github.com/valkey-io/valkey-glide/go/v2/config"
 )
 
 var client *glide.Client
 
 func init() {
     var err error
-    client, err = glide.NewClient(&glide.ClientConfiguration{
-        Addresses: []glide.NodeAddress{{Host: "localhost", Port: 6379}},
+    client, err = glide.NewClient(&config.ClientConfiguration{
+        Addresses: []config.NodeAddress{{Host: "localhost", Port: 6379}},
         RequestTimeout: 500, // milliseconds
         ClientName: "my-app-client",
     })
@@ -83,8 +84,10 @@ func main() {
 
 **✅ Always Configure Timeouts**
 ```go
-client, err := glide.NewClient(&glide.ClientConfiguration{
-    Addresses: []glide.NodeAddress{{Host: "localhost", Port: 6379}},
+import "github.com/valkey-io/valkey-glide/go/v2"
+
+client, err := glide.NewClient(&config.ClientConfiguration{
+    Addresses: []config.NodeAddress{{Host: "localhost", Port: 6379}},
     RequestTimeout: 500, // milliseconds
 })
 ```
@@ -325,18 +328,18 @@ log.Printf("Found %d keys", len(allKeys))
 
 **✅ Enable for Read-Heavy Workloads**
 ```go
-import "github.com/valkey-io/valkey-glide/go/v2"
+import (
+    "github.com/valkey-io/valkey-glide/go/v2"
+    "github.com/valkey-io/valkey-glide/go/v2/config"
+)
 
-config := &glide.ClusterClientConfiguration{
-    Addresses: []glide.NodeAddress{
-        {Host: "cluster.endpoint.cache.amazonaws.com", Port: 6379},
-    },
-    ReadFrom:       glide.AZAffinity,
-    ClientAZ:       "us-east-1a", // Your application's AZ
-    RequestTimeout: 500,
-}
+cfg := config.NewClusterClientConfiguration().
+    WithAddress(&config.NodeAddress{Host: "cluster.endpoint.cache.amazonaws.com", Port: 6379}).
+    WithReadFrom(config.AzAffinity).
+    WithClientAZ("us-east-1a"). // Your application's AZ
+    WithRequestTimeout(500 * time.Millisecond)
 
-client, err := glide.NewClusterClient(config)
+client, err := glide.NewClusterClient(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -385,17 +388,17 @@ if err != nil {
 
 **✅ Configure Connection Backoff**
 ```go
-import "github.com/valkey-io/valkey-glide/go/v2"
+import (
+    "github.com/valkey-io/valkey-glide/go/v2"
+    "github.com/valkey-io/valkey-glide/go/v2/config"
+)
 
-client, err := glide.NewClient(&glide.ClientConfiguration{
-    Addresses: []glide.NodeAddress{{Host: "localhost", Port: 6379}},
-    ConnectionBackoff: &glide.BackoffStrategy{
-        NumberOfRetries: 10,
-        Factor:          500,  // Base delay in ms
-        ExponentBase:    2,    // Exponential backoff
-    },
-    RequestTimeout: 500,
-})
+cfg := config.NewClientConfiguration().
+    WithAddress(&config.NodeAddress{Host: "localhost", Port: 6379}).
+    WithReconnectStrategy(config.NewBackoffStrategy(10, 500, 2)). // retries, factor, exponentBase
+    WithRequestTimeout(500 * time.Millisecond)
+
+client, err := glide.NewClient(cfg)
 ```
 
 ## Advanced Patterns
@@ -420,14 +423,18 @@ if err != nil {
 
 **✅ Dedicated Client for Blocking Operations**
 ```go
-import "github.com/valkey-io/valkey-glide/go/v2"
+import (
+    "github.com/valkey-io/valkey-glide/go/v2"
+    "github.com/valkey-io/valkey-glide/go/v2/config"
+)
 
 // Separate client for blocking commands
-blockingClient, err := glide.NewClient(&glide.ClientConfiguration{
-    Addresses:      []glide.NodeAddress{{Host: "localhost", Port: 6379}},
-    RequestTimeout: 30000, // 30 seconds
-    ClientName:     "queue-worker",
-})
+blockingCfg := config.NewClientConfiguration().
+    WithAddress(&config.NodeAddress{Host: "localhost", Port: 6379}).
+    WithRequestTimeout(30 * time.Second).
+    WithClientName("queue-worker")
+
+blockingClient, err := glide.NewClient(blockingCfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -436,24 +443,30 @@ if err != nil {
 item, err := blockingClient.BLPop(ctx, []string{"queue"}, 30)
 
 // Regular client for other operations
-regularClient, err := glide.NewClient(&glide.ClientConfiguration{
-    Addresses:      []glide.NodeAddress{{Host: "localhost", Port: 6379}},
-    RequestTimeout: 500,
-    ClientName:     "app-client",
-})
+regularCfg := config.NewClientConfiguration().
+    WithAddress(&config.NodeAddress{Host: "localhost", Port: 6379}).
+    WithRequestTimeout(500 * time.Millisecond).
+    WithClientName("app-client")
+
+regularClient, err := glide.NewClient(regularCfg)
 ```
 
 ### Connection Pool Tuning
 
 **✅ High-Throughput Configuration**
 ```go
-import "github.com/valkey-io/valkey-glide/go/v2"
+import (
+    "github.com/valkey-io/valkey-glide/go/v2"
+    "github.com/valkey-io/valkey-glide/go/v2/config"
+)
 
-client, err := glide.NewClient(&glide.ClientConfiguration{
-    Addresses:             []glide.NodeAddress{{Host: "localhost", Port: 6379}},
-    InflightRequestsLimit: 2000, // Default: 1000
-    RequestTimeout:        500,
-})
+// Note: inflightRequestsLimit is configured at the core level
+// For high-throughput, ensure proper connection management
+cfg := config.NewClientConfiguration().
+    WithAddress(&config.NodeAddress{Host: "localhost", Port: 6379}).
+    WithRequestTimeout(500 * time.Millisecond)
+
+client, err := glide.NewClient(cfg)
 ```
 
 ## Data Structures

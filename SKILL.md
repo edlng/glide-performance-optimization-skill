@@ -59,10 +59,10 @@ When you review code, this skill detects the language from:
 3. **Syntax patterns**: Language-specific keywords and structures
 
 **Action Required**: When language is detected, load the corresponding reference file:
-- Node.js/TypeScript → Load `.kiro/skills/reference/nodejs-patterns.md`
-- Python → Load `.kiro/skills/reference/python-patterns.md`
-- Java → Load `.kiro/skills/reference/java-patterns.md`
-- Go → Load `.kiro/skills/reference/go-patterns.md`
+- Node.js/TypeScript → Load `.kiro/skills/glide-performance-optimization/reference/nodejs-patterns.md`
+- Python → Load `.kiro/skills/glide-performance-optimization/reference/python-patterns.md`
+- Java → Load `.kiro/skills/glide-performance-optimization/reference/java-patterns.md`
+- Go → Load `.kiro/skills/glide-performance-optimization/reference/go-patterns.md`
 
 ## Universal Anti-Patterns (All Languages)
 
