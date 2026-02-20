@@ -66,6 +66,10 @@ def shutdown():
 
 ### 2. Request Timeout Configuration
 
+**Production-Ready Configuration:**
+
+For a complete production-ready configuration example with all recommended settings (timeouts, retry strategies, connection pooling, AZ affinity), see `assets/config-templates/python-config.py`.
+
 **✅ Always Configure Timeouts**
 ```python
 config = GlideClientConfiguration(

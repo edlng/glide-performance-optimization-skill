@@ -62,6 +62,10 @@ public class CacheService {
 
 ### 2. Request Timeout Configuration
 
+**Production-Ready Configuration:**
+
+For a complete production-ready configuration example with all recommended settings (timeouts, retry strategies, connection pooling, AZ affinity), see `assets/config-templates/java-config.java`.
+
 **✅ Always Configure Timeouts**
 ```java
 GlideClientConfiguration config = GlideClientConfiguration.builder()

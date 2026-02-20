@@ -82,6 +82,10 @@ func main() {
 
 ### 2. Request Timeout Configuration
 
+**Production-Ready Configuration:**
+
+For a complete production-ready configuration example with all recommended settings (timeouts, retry strategies, connection pooling, AZ affinity), see `assets/config-templates/go-config.go`.
+
 **✅ Always Configure Timeouts**
 ```go
 import "github.com/valkey-io/valkey-glide/go/v2"

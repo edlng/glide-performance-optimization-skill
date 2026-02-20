@@ -47,6 +47,10 @@ process.on('SIGTERM', async () => {
 
 ### 2. Request Timeout Configuration
 
+**Production-Ready Configuration:**
+
+For a complete production-ready configuration example with all recommended settings (timeouts, retry strategies, connection pooling, AZ affinity), see `assets/config-templates/nodejs-config.ts`.
+
 **✅ Always Configure Timeouts**
 ```typescript
 const client = await GlideClient.createClient({

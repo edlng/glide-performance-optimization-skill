@@ -1,6 +1,6 @@
 ---
 name: GLIDE Performance Optimization
-description: Expert guidance for optimizing Valkey GLIDE clients across Node.js, Python, Java, and Go with progressive disclosure
+description: Expert guidance for optimizing Valkey GLIDE clients across Node.js, Python, Java, Go, and PHP with progressive disclosure
 version: 1.0.0
 author: Valkey Maintainers
 tags:
@@ -16,11 +16,12 @@ languages:
   - python
   - java
   - go
+  - php
 ---
 
 # GLIDE Performance Optimization Skill
 
-Expert guidance for optimizing Valkey GLIDE clients across Node.js, Python, Java, and Go. This skill uses progressive disclosure—loading only the content relevant to your current task to minimize context usage.
+Expert guidance for optimizing Valkey GLIDE clients across Node.js, Python, Java, Go, and PHP. This skill uses progressive disclosure—loading only the content relevant to your current task to minimize context usage.
 
 ## How This Skill Works
 
@@ -32,6 +33,7 @@ This skill automatically detects the programming language you're working with an
   - `reference/python-patterns.md` - Python async/sync specific guidance  
   - `reference/java-patterns.md` - Java specific guidance
   - `reference/go-patterns.md` - Go specific guidance
+  - `reference/php-patterns.md` - PHP specific guidance
 
 **Context Efficiency**: Reviewing Node.js code loads only Node.js patterns. Python/Java/Go patterns remain unloaded, reducing context usage.
 
@@ -50,12 +52,13 @@ This skill automatically detects the programming language you're working with an
 
 When you review code, this skill detects the language from:
 
-1. **File extensions**: `.js`, `.ts`, `.py`, `.java`, `.go`
+1. **File extensions**: `.js`, `.ts`, `.py`, `.java`, `.go`, `.php`
 2. **Import statements**: 
    - Node.js: `import { GlideClient }`, `require('@valkey/valkey-glide')`
    - Python: `from glide import`, `import glide`
    - Java: `import glide.api.*`
    - Go: `import "github.com/valkey-io/valkey-glide/go"`
+   - PHP: `use ValkeyGlide`, `use ValkeyGlideCluster`, `new ValkeyGlide()`
 3. **Syntax patterns**: Language-specific keywords and structures
 
 **Action Required**: When language is detected, load the corresponding reference file:
@@ -63,6 +66,7 @@ When you review code, this skill detects the language from:
 - Python → Load `.kiro/skills/glide-performance-optimization/reference/python-patterns.md`
 - Java → Load `.kiro/skills/glide-performance-optimization/reference/java-patterns.md`
 - Go → Load `.kiro/skills/glide-performance-optimization/reference/go-patterns.md`
+- PHP → Load `.kiro/skills/glide-performance-optimization/reference/php-patterns.md`
 
 ## Universal Anti-Patterns (All Languages)
 
@@ -209,7 +213,124 @@ These anti-patterns cause performance issues regardless of language:
 - Split large objects across keys
 - Use Hash data structures for structured data instead of JSON strings
 
+## Valkey Module Detection & Optimization
+
+Valkey modules extend core functionality with specialized data structures and operations. This skill detects module usage and provides module-specific optimization recommendations.
+
+### Supported Modules
+
+**Valkey-Search (FT.*)**: Full-text search and secondary indexing
+**Valkey-JSON (JSON.*)**: Native JSON document storage and manipulation
+**Valkey-BloomFilter (BF.*, CF.*, CMS.*, TOPK.*)**: Probabilistic data structures
+
+### Module Detection
+
+The skill automatically detects module usage through command patterns:
+
+- `FT.SEARCH`, `FT.CREATE`, `FT.AGGREGATE` → Valkey-Search
+- `JSON.GET`, `JSON.SET`, `JSON.MGET` → Valkey-JSON
+- `BF.ADD`, `BF.EXISTS`, `CF.ADD` → Valkey-BloomFilter
+
+### Common Module Anti-Patterns
+
+**Valkey-Search:**
+- Missing index definitions before queries
+- Inefficient query patterns (e.g., wildcard prefix searches)
+- Lack of result pagination for large result sets
+- Not using `FT.AGGREGATE` for aggregation queries
+
+**Valkey-JSON:**
+- Using `JSON.GET` with full document retrieval instead of path-based queries
+- Not leveraging `JSON.MGET` for batch operations
+- Storing large JSON documents (>100KB) without splitting
+- Missing `JSON.NUMINCRBY` for atomic numeric updates
+
+**Valkey-BloomFilter:**
+- Incorrect false-positive rate configuration
+- Missing capacity planning (initial size too small)
+- Not using Cuckoo Filters (`CF.*`) when deletions are needed
+- Inefficient batch operations (sequential `BF.ADD` instead of `BF.MADD`)
+
+### Module Recommendations
+
+When the skill detects patterns that would benefit from modules:
+
+**Complex JSON Operations Without Valkey-JSON:**
+- Detecting `GET` + JSON parsing + modification + `SET` patterns
+- Recommendation: Use `JSON.SET` with path syntax for atomic updates
+
+**Full-Text Search Implemented with SCAN:**
+- Detecting `SCAN` + pattern matching for text search
+- Recommendation: Use Valkey-Search with `FT.CREATE` index and `FT.SEARCH`
+
+**Set Membership Checks at Scale:**
+- Detecting large `SISMEMBER` operations or `SMEMBERS` + filtering
+- Recommendation: Use Bloom Filters (`BF.EXISTS`) for probabilistic membership
+
+### Configuration Guidance
+
+**Valkey-Search Index Optimization:**
+- Use appropriate field types (TEXT, NUMERIC, TAG, GEO)
+- Configure `STOPWORDS` for language-specific optimization
+- Set `MAXPREFIXEXPANSIONS` to limit wildcard query cost
+- Use `SORTBY` with indexed fields for efficient sorting
+
+**Valkey-JSON Memory Settings:**
+- Configure `json-max-size` to prevent oversized documents
+- Use path-based operations to minimize data transfer
+- Leverage `JSON.FORGET` to remove unused paths
+
+**Valkey-BloomFilter Capacity Planning:**
+- Calculate initial capacity based on expected cardinality
+- Set error rate based on use case (0.01 for general, 0.001 for critical)
+- Use `BF.RESERVE` to pre-allocate with optimal parameters
+
+## Server Configuration Recommendations
+
+The skill analyzes your code patterns to provide infrastructure-level configuration recommendations. For comprehensive guidance on optimizing your Valkey/ElastiCache deployment, see:
+
+**`assets/server-configuration-guide.md`** - Complete infrastructure optimization guide covering:
+
+- **Cluster Architecture Selection**: When to use cluster mode vs standalone based on detected patterns
+- **Read/Write Workload Analysis**: Routing strategies and replica configuration
+- **Server-Side Tuning**: `maxmemory-policy`, `timeout`, `tcp-keepalive`, `maxclients` configuration
+- **ElastiCache Recommendations**: Node type selection, Multi-AZ deployment, parameter groups, shard count
+
+### Quick Server Configuration Insights
+
+**Cluster Mode Detection:**
+- Multi-key operations across unrelated keys → Cluster mode recommended
+- Single-key or related-key operations → Standalone sufficient
+
+**Read/Write Routing:**
+- >80% reads → Enable replicas, use `PREFER_REPLICA` or `AZ_AFFINITY`
+- >50% writes → Use `PRIMARY` routing, optimize write performance
+- Balanced workload → Use `PRIMARY` for consistency, 1-2 replicas for HA
+
+**Memory Policy:**
+- Cache-like access (SET with TTL) → `maxmemory-policy = allkeys-lru`
+- Persistent data (no eviction) → `maxmemory-policy = noeviction`
+- Mixed TTL usage → `maxmemory-policy = volatile-lru`
+
+**ElastiCache Node Types:**
+- Memory-intensive (large values, many keys) → r7g.large or larger
+- Compute-intensive (high ops/sec, small values) → m7g.large or larger
+- Cost-optimized (serverless, low traffic) → t4g.small
+
+For detailed recommendations with code examples and configuration templates, load `assets/server-configuration-guide.md`.
+
 ## Configuration Recommendations
+
+### Production-Ready Templates
+
+For complete, production-ready configuration examples with all recommended settings, see:
+- `assets/config-templates/nodejs-config.ts` - Node.js/TypeScript
+- `assets/config-templates/python-config.py` - Python async/sync
+- `assets/config-templates/java-config.java` - Java
+- `assets/config-templates/go-config.go` - Go
+- `assets/config-templates/php-config.php` - PHP
+
+These templates include timeouts, retry strategies, connection pooling, and AZ affinity configuration.
 
 ### Request Timeouts
 

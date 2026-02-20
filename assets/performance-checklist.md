@@ -75,6 +75,15 @@ Quick reference checklist for reviewing Valkey GLIDE client implementations.
 - [ ] Context for timeouts
 - [ ] Error handling with proper checks
 
+### PHP
+- [ ] Client created once, reused via global/static variable
+- [ ] MULTI/EXEC or pipeline for bulk operations
+- [ ] ValkeyGlideException try-catch around operations
+- [ ] Reconnection strategy with exponential backoff
+- [ ] lazy_connect enabled for serverless/PHP-FPM cold starts
+- [ ] Blocking commands avoided (use polling alternatives)
+- [ ] Hash structures used instead of JSON strings
+
 ## Common Anti-Patterns to Avoid
 
 - ❌ Creating client per request

@@ -1,45 +1,63 @@
 # GLIDE Performance Optimization Skill
 
-Expert guidance for optimizing Valkey GLIDE clients across Node.js, Python, Java, and Go. This skill provides context-aware performance optimization feedback through AI development tools (Kiro, Claude, WindSurf, VS Code).
+Expert guidance for optimizing Valkey GLIDE clients across Node.js, Python, Java, Go, and PHP. This skill provides context-aware performance optimization feedback through AI development tools (Kiro, Claude, WindSurf, VS Code).
 
 ## Features
 
 - **Progressive Disclosure**: Loads only relevant language-specific patterns, reducing context usage by 60-85%
-- **Multi-Language Support**: Node.js, Python, Java, and Go
+- **Multi-Language Support**: Node.js, Python, Java, Go, and PHP
 - **Automatic Language Detection**: Detects language from file extensions, imports, and syntax
 - **Actionable Recommendations**: Provides before/after code examples and configuration guidance
 - **Anti-Pattern Detection**: Identifies common performance issues like per-request client creation, missing timeouts, sequential operations
 
 ## Installation
 
-### Kiro
+### Quick Install (Recommended)
 
 ```bash
-# Clone into Kiro skills directory
-git clone https://github.com/valkey-io/glide-performance-skill ~/.kiro/skills/glide-performance
+# Using NPX (requires Node.js 16+)
+npx skills add valkey-io/valkey-samples/skills/glide-performance
 ```
 
-### Claude Desktop
+This automatically installs the skill to your AI tool's skills directory.
+
+### Updating
 
 ```bash
-# Clone into Claude skills directory
-git clone https://github.com/valkey-io/glide-performance-skill ~/.claude/skills/glide-performance
+# Update to latest version
+npx skills update glide-performance
 ```
 
-### WindSurf / VS Code
+### Manual Installation (Git Clone)
 
 ```bash
-# Clone into your IDE's skills directory
-git clone https://github.com/valkey-io/glide-performance-skill ~/.windsurf/skills/glide-performance
-# or
-git clone https://github.com/valkey-io/glide-performance-skill ~/.vscode/skills/glide-performance
+# For Kiro:
+git clone https://github.com/valkey-io/valkey-samples ~/.kiro/skills/
+
+# For Claude Desktop:
+git clone https://github.com/valkey-io/valkey-samples ~/.claude/skills/
+
+# For WindSurf:
+git clone https://github.com/valkey-io/valkey-samples ~/.windsurf/skills/
 ```
 
-### Manual Installation
+The skill will be available at `<skills-dir>/valkey-samples/skills/glide-performance/`.
 
-1. Download or clone this repository
-2. Copy the entire directory to your AI tool's skills folder
-3. Restart your AI tool if necessary
+### Prerequisites
+
+- **Git** installed (for manual installation)
+- **Node.js 16+** (if using npx skills command)
+- **AI development tool** installed (Kiro, Claude Desktop, WindSurf, or VS Code with compatible extension)
+
+### Verification
+
+After installation, verify the skill is available by asking in your AI tool's chat interface:
+
+```
+"List available skills"
+```
+
+You should see "glide-performance" or "GLIDE Performance Optimization" in the list.
 
 ## Usage
 
@@ -83,8 +101,14 @@ The skill uses progressive disclosure to minimize context usage:
 - `reference/python-patterns.md` - Python patterns (loaded only for .py files)
 - `reference/java-patterns.md` - Java patterns (loaded only for .java files)
 - `reference/go-patterns.md` - Go patterns (loaded only for .go files)
+- `reference/php-patterns.md` - PHP patterns (loaded only for .php files)
 
-**Context Efficiency**: Reviewing Node.js code loads only Node.js patterns. Python/Java/Go patterns remain unloaded.
+### Additional Resources (Loaded When Referenced)
+- `assets/performance-checklist.md` - Quick reference checklist
+- `assets/server-configuration-guide.md` - Valkey/ElastiCache infrastructure optimization
+- `assets/config-templates/` - Production-ready configuration examples
+
+**Context Efficiency**: Reviewing Node.js code loads only Node.js patterns. Python/Java/Go/PHP patterns remain unloaded.
 
 ## Common Anti-Patterns Detected
 
@@ -114,9 +138,18 @@ glide-performance-skill/
 │   ├── nodejs-patterns.md            # Node.js/TypeScript specific
 │   ├── python-patterns.md            # Python specific
 │   ├── java-patterns.md              # Java specific
-│   └── go-patterns.md                # Go specific
+│   ├── go-patterns.md                # Go specific
+│   └── php-patterns.md               # PHP specific
 └── assets/
-    └── performance-checklist.md      # Quick reference
+    ├── performance-checklist.md      # Quick reference
+    ├── server-configuration-guide.md # Infrastructure optimization
+    └── config-templates/             # Production-ready configurations
+        ├── nodejs-config.ts
+        ├── python-config.py
+        ├── java-config.java
+        ├── go-config.go
+        ├── php-config.php
+        └── README.md
 ```
 
 ## Performance Impact
@@ -139,6 +172,7 @@ Typical improvements when moving from anti-patterns to recommended patterns:
 - Python: `valkey-glide` v1.0.0+
 - Java: `glide-for-redis` v1.0.0+
 - Go: `valkey-glide/go` v1.0.0+
+- PHP: `valkey-glide-php` v1.0.0+
 
 ## Contributing
 
