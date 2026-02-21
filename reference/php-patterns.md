@@ -21,6 +21,10 @@ function handleRequest($request) {
 **✅ Correct: Singleton Client**
 ```php
 // Create once at application startup
+// ValkeyGlide constructor takes no arguments; all config goes in connect()
+// connect() also accepts PHPRedis-compatible positional params ($host, $port,
+// $timeout, $persistent_id, $retry_interval, $read_timeout) for drop-in
+// compatibility, but prefer the GLIDE-style named params shown here.
 global $valkeyClient;
 
 if (!isset($valkeyClient)) {
@@ -56,18 +60,23 @@ For a complete production-ready configuration example with all recommended setti
 **✅ Always Configure Timeouts**
 ```php
 // Standalone client with timeout
+// ValkeyGlide() takes no constructor args; use connect() for all config
 $client = new ValkeyGlide();
 $client->connect(
     addresses: [['host' => 'localhost', 'port' => 6379]],
     request_timeout: 500  // milliseconds
 );
 
-// Cluster client with timeout
+// Cluster client with timeout (all config in constructor)
+// ValkeyGlideCluster constructor also accepts PHPRedis RedisCluster-style
+// positional params ($name, $seeds, $timeout, $read_timeout, $persistent,
+// $auth, $context) for compatibility. Cannot mix styles.
 $cluster = new ValkeyGlideCluster(
     addresses: [
         ['host' => 'node1.cluster.local', 'port' => 6379],
         ['host' => 'node2.cluster.local', 'port' => 6379]
     ],
+    use_tls: false,
     request_timeout: 500
 );
 ```
@@ -186,9 +195,11 @@ $cluster = new ValkeyGlideCluster(
     addresses: [
         ['host' => 'cluster.endpoint.cache.amazonaws.com', 'port' => 6379]
     ],
-    read_strategy: ValkeyGlide::READ_FROM_AZ_AFFINITY,
+    use_tls: false,
+    read_from: ValkeyGlide::READ_FROM_AZ_AFFINITY,
+    request_timeout: 500,
     client_az: 'us-east-1a',
-    request_timeout: 500
+    periodic_checks: ValkeyGlideCluster::PERIODIC_CHECK_ENABLED_DEFAULT_CONFIGS
 );
 ```
 
@@ -246,9 +257,10 @@ $client->connect(
     addresses: [['host' => 'localhost', 'port' => 6379]],
     request_timeout: 500,
     reconnect_strategy: [
-        'number_of_retries' => 10,
-        'factor' => 500,        // Base delay in ms
-        'exponent_base' => 2    // Exponential backoff (500ms, 1s, 2s, 4s, ...)
+        'num_of_retries' => 10,
+        'factor' => 2,           // Delay multiplier
+        'exponent_base' => 2,    // Exponential backoff base
+        'jitter_percent' => 15   // Random jitter to avoid thundering herd
     ]
 );
 ```
@@ -279,9 +291,10 @@ if (!isset($valkeyClient)) {
         request_timeout: 500,
         lazy_connect: true,
         reconnect_strategy: [
-            'number_of_retries' => 3,
-            'factor' => 200,
-            'exponent_base' => 2
+            'num_of_retries' => 3,
+            'factor' => 2,
+            'exponent_base' => 2,
+            'jitter_percent' => 15
         ]
     );
 }
@@ -348,20 +361,20 @@ $email = $user['email'];  // Fetched everything for one field
 
 **✅ Hash Data Structure**
 ```php
-// Store as hash with individual fields
-$client->hset('user:123', [
-    'name' => 'John',
-    'email' => 'john@example.com',
-    'age' => '30',
-]);
+// hSet accepts variadic field-value pairs or an associative array
+// Variadic form (primary signature):
+$client->hSet('user:123', 'name', 'John', 'email', 'john@example.com', 'age', '30');
+
+// Associative array form (also supported):
+$client->hSet('user:123', ['name' => 'John', 'email' => 'john@example.com', 'age' => '30']);
 
 // Fetch only what you need
-$email = $client->hget('user:123', 'email');
-$fields = $client->hmget('user:123', ['name', 'email']);
-$all = $client->hgetall('user:123');
+$email = $client->hGet('user:123', 'email');
+$fields = $client->hMget('user:123', ['name', 'email']);
+$all = $client->hGetAll('user:123');
 
 // Update single field without read-modify-write
-$client->hset('user:123', ['age' => '31']);
+$client->hSet('user:123', 'age', '31');
 ```
 
 ## Monitoring
@@ -370,14 +383,27 @@ $client->hset('user:123', ['age' => '31']);
 
 **✅ Enable Tracing**
 ```php
+use ValkeyGlide\OpenTelemetry\OpenTelemetryConfig;
+use ValkeyGlide\OpenTelemetry\TracesConfig;
+
+$otelConfig = OpenTelemetryConfig::builder()
+    ->traces(TracesConfig::builder()
+        ->endpoint('grpc://localhost:4317')
+        ->samplePercentage(10)  // 10% sampling in production
+        ->build())
+    ->build();
+
 $client = new ValkeyGlide();
 $client->connect(
     addresses: [['host' => 'localhost', 'port' => 6379]],
-    request_timeout: 500
+    request_timeout: 500,
+    advanced_config: [
+        'otel' => $otelConfig
+    ]
 );
 
-// Sample 10% of requests in production
-$client->setOtelSamplePercentage(10.0);
+// Adjust sampling at runtime (static method, takes int 0-100)
+ValkeyGlide::setOtelSamplePercentage(10);
 ```
 
 **Recommended Sampling Rates**:

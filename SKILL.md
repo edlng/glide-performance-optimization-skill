@@ -345,6 +345,7 @@ Configure exponential backoff for resilience:
 - Number of retries: 5-10
 - Base delay: 500ms
 - Exponential base: 2
+- Jitter percent: 10-20 (avoids thundering herd)
 
 ### Connection Pool Sizing
 
