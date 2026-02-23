@@ -34,11 +34,14 @@ npx skills update glide-performance
 # For Kiro:
 git clone https://github.com/valkey-io/valkey-samples ~/.kiro/skills/
 
-# For Claude Desktop:
+# For Claude:
 git clone https://github.com/valkey-io/valkey-samples ~/.claude/skills/
 
-# For WindSurf:
-git clone https://github.com/valkey-io/valkey-samples ~/.windsurf/skills/
+# For VSCode (User Profile):
+git clone https://github.com/valkey-io/valkey-samples ~/.agents/skills/
+
+# For WindSurf (Global):
+git clone https://github.com/valkey-io/valkey-samples ~/.codeium/windsurf/skills/
 ```
 
 The skill will be available at `<skills-dir>/valkey-samples/skills/glide-performance/`.
