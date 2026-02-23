@@ -424,6 +424,48 @@ batch.get("user:2");
 const [user1, user2] = await client.exec(batch) as [string | null, string | null];
 ```
 
+## SCAN vs Valkey-Search
+
+### SCAN for Key Discovery (Scalability Concern)
+
+**❌ SCAN Loop for Pattern-Based Key Lookup**
+```typescript
+// O(N) full keyspace iteration — degrades as dataset grows
+const matched: string[] = [];
+let cursor = "0";
+do {
+    const [newCursor, keys] = await client.scan(cursor, {
+        match: pattern,
+        count: 100,
+    });
+    cursor = newCursor;
+    matched.push(...keys);
+} while (cursor !== "0");
+
+// Then individually fetching each matched key compounds the problem
+for (const key of matched) {
+    const val = await client.get(key);
+    // ...
+}
+```
+
+**✅ Valkey-Search Index for Efficient Queries**
+```typescript
+// Create index once at startup
+await client.ftCreate("idx:content", {
+    prefix: ["content:"],
+    schema: [
+        { name: "title", type: "TEXT" },
+        { name: "tags", type: "TAG" },
+    ],
+});
+
+// O(K) where K = result count, independent of total keyspace size
+const results = await client.ftSearch("idx:content", `@title:${searchTerm}`);
+```
+
+**Note**: SCAN is appropriate for one-time migrations or admin tasks. For application-level search or filtering, Valkey-Search (`FT.*`) scales independently of keyspace size.
+
 ## Common Pitfalls
 
 ### 1. Not Awaiting Client Creation

@@ -444,6 +444,51 @@ Logger.setLoggerConfig(Logger.Level.INFO);
 Logger.setLoggerConfig(Logger.Level.ERROR);
 ```
 
+## SCAN vs Valkey-Search
+
+### SCAN for Key Discovery (Scalability Concern)
+
+**❌ SCAN Loop for Pattern-Based Key Lookup**
+```java
+// O(N) full keyspace iteration — degrades as dataset grows
+List<String> matched = new ArrayList<>();
+String cursor = "0";
+do {
+    Object[] result = client.scan(cursor, ScanOptions.builder()
+        .match(pattern)
+        .count(100)
+        .build()
+    ).get();
+    cursor = (String) result[0];
+    String[] keys = (String[]) result[1];
+    matched.addAll(Arrays.asList(keys));
+} while (!cursor.equals("0"));
+
+// Then individually fetching each matched key compounds the problem
+for (String key : matched) {
+    String val = client.get(key).get();
+    // ...
+}
+```
+
+**✅ Valkey-Search Index for Efficient Queries**
+```java
+// Create index once at startup
+client.ftCreate("idx:content", FTCreateOptions.builder()
+    .prefix(List.of("content:"))
+    .schema(List.of(
+        new FieldSchema("title", FieldType.TEXT),
+        new FieldSchema("tags", FieldType.TAG)
+    ))
+    .build()
+).get();
+
+// O(K) where K = result count, independent of total keyspace size
+SearchResult results = client.ftSearch("idx:content", "@title:" + searchTerm).get();
+```
+
+**Note**: SCAN is appropriate for one-time migrations or admin tasks. For application-level search or filtering, Valkey-Search (`FT.*`) scales independently of keyspace size.
+
 ## Common Pitfalls
 
 ### 1. Not Calling get() on CompletableFuture

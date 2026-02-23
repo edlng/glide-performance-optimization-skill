@@ -280,12 +280,33 @@ values, _ := client.MGet(ctx, []string{
 })
 ```
 
+**❌ Related Entity Keys Without Hash Tags (Cluster)**
+```go
+// Geo/location data — each key lands on a different slot
+client.Set("entity:"+entityId+":lat", latStr)
+client.Set("entity:"+entityId+":lon", lonStr)
+client.Set("entity:"+entityId+":updated", tsStr)
+
+// Time-series — related buckets scattered across shards
+client.LPush("ts:"+seriesId+":"+bucket, []string{encoded})
+client.Set("ts:"+seriesId+":latest", encoded)
+```
+
 **✅ Hash Tags for Same Slot**
 ```go
 // Single roundtrip - all keys on same shard
 values, _ := client.MGet(ctx, []string{
     "{user:123}:name", "{user:123}:email", "{user:123}:age",
 })
+
+// Geo keys with hash tags — all co-located on same slot
+client.Set("{entity:"+entityId+"}:lat", latStr)
+client.Set("{entity:"+entityId+"}:lon", lonStr)
+client.Set("{entity:"+entityId+"}:updated", tsStr)
+
+// Time-series with hash tags — related buckets on same slot
+client.LPush("{ts:"+seriesId+"}:"+bucket, []string{encoded})
+client.Set("{ts:"+seriesId+"}:latest", encoded)
 
 // Set related data
 data := map[string]string{
@@ -473,6 +494,65 @@ cfg := config.NewClientConfiguration().
 client, err := glide.NewClient(cfg)
 ```
 
+### Serverless/Lambda Optimization
+
+**❌ Per-Invocation Client in Handler**
+```go
+func HandleLambdaRequest(event map[string]string) string {
+    endpoint := os.Getenv("CACHE_ENDPOINT")
+    cfg := &config.GlideClientConfiguration{
+        Addresses:      []config.NodeAddress{{Host: endpoint, Port: 6379}},
+        RequestTimeout: 1000,
+    }
+    client, _ := api.NewGlideClient(cfg)
+    defer client.Close()
+
+    result, _ := client.Get("request:" + event["requestId"])
+    return result.Value()
+}
+```
+
+**✅ Persistent Client with Lazy Connection**
+```go
+import (
+    "github.com/valkey-io/valkey-glide/go/v2"
+    "github.com/valkey-io/valkey-glide/go/v2/config"
+)
+
+// Package-level client persists across warm invocations
+var lambdaClient *glide.Client
+
+func ensureClient() error {
+    if lambdaClient != nil {
+        return nil
+    }
+    cfg := config.NewClientConfiguration().
+        WithAddress(&config.NodeAddress{Host: os.Getenv("CACHE_ENDPOINT"), Port: 6379}).
+        WithRequestTimeout(500 * time.Millisecond).
+        WithLazyConnect(true). // Defer TCP+TLS handshake until first command
+        WithClientName("lambda-handler").
+        WithReconnectStrategy(config.NewBackoffStrategy(3, 500, 2))
+
+    var err error
+    lambdaClient, err = glide.NewClient(cfg)
+    return err
+}
+
+func HandleLambdaRequest(event map[string]string) (string, error) {
+    if err := ensureClient(); err != nil {
+        return "", fmt.Errorf("cache init: %w", err)
+    }
+
+    result, err := lambdaClient.Get("request:" + event["requestId"])
+    if err != nil {
+        return "", fmt.Errorf("cache read: %w", err)
+    }
+    return result.Value(), nil
+}
+```
+
+**`LazyConnect`** defers the TCP+TLS handshake until the first command, reducing cold start by ~2-5ms. Combined with a package-level variable, the connection persists across warm invocations.
+
 ## Data Structures
 
 ### Hash vs JSON
@@ -547,6 +627,47 @@ logger.SetLoggerConfig(logger.Info, "")
 // Maximum performance: errors only
 logger.SetLoggerConfig(logger.Error, "")
 ```
+
+## SCAN vs Valkey-Search
+
+### SCAN for Key Discovery (Scalability Concern)
+
+**❌ SCAN Loop for Pattern-Based Key Lookup**
+```go
+// O(N) full keyspace iteration — degrades as dataset grows
+var matched []string
+cursor := "0"
+for {
+    result, _ := client.Scan(cursor, config.ScanOptions{Match: pattern, Count: 100})
+    cursor = result.Cursor
+    matched = append(matched, result.Keys...)
+    if cursor == "0" {
+        break
+    }
+}
+// Then individually fetching each matched key compounds the problem
+for _, key := range matched {
+    val, _ := client.Get(key)
+    // ...
+}
+```
+
+**✅ Valkey-Search Index for Efficient Queries**
+```go
+// Create index once at startup
+client.FTCreate("idx:content", &ft.CreateOptions{
+    Prefix: []string{"content:"},
+    Schema: []ft.FieldSchema{
+        {Name: "title", Type: ft.Text},
+        {Name: "tags", Type: ft.Tag},
+    },
+})
+
+// O(K) where K = result count, independent of total keyspace size
+results, _ := client.FTSearch("idx:content", "@title:"+searchTerm)
+```
+
+**Note**: SCAN is appropriate for one-time migrations or admin tasks. For application-level search or filtering, Valkey-Search (`FT.*`) scales independently of keyspace size.
 
 ## Common Pitfalls
 
@@ -710,3 +831,4 @@ go func() {
 - [ ] Goroutine safety considerations addressed
 - [ ] OpenTelemetry enabled for monitoring
 - [ ] Logging set to warn/error for production
+- [ ] LazyConnect enabled for serverless/Lambda entry points

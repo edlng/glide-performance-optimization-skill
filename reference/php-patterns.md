@@ -428,6 +428,44 @@ try {
 }
 ```
 
+## SCAN vs Valkey-Search
+
+### SCAN for Key Discovery (Scalability Concern)
+
+**❌ SCAN Loop for Pattern-Based Key Lookup**
+```php
+// O(N) full keyspace iteration — degrades as dataset grows
+$matched = [];
+$cursor = 0;
+do {
+    [$cursor, $keys] = $client->scan($cursor, ['MATCH' => $pattern, 'COUNT' => 100]);
+    $matched = array_merge($matched, $keys);
+} while ($cursor !== 0);
+
+// Then individually fetching each matched key compounds the problem
+foreach ($matched as $key) {
+    $val = $client->get($key);
+    // ...
+}
+```
+
+**✅ Valkey-Search Index for Efficient Queries**
+```php
+// Create index once at startup
+$client->ftCreate('idx:content', [
+    'PREFIX' => ['content:'],
+    'SCHEMA' => [
+        ['name' => 'title', 'type' => 'TEXT'],
+        ['name' => 'tags', 'type' => 'TAG'],
+    ],
+]);
+
+// O(K) where K = result count, independent of total keyspace size
+$results = $client->ftSearch('idx:content', "@title:{$searchTerm}");
+```
+
+**Note**: SCAN is appropriate for one-time migrations or admin tasks. For application-level search or filtering, Valkey-Search (`FT.*`) scales independently of keyspace size.
+
 ## Common Pitfalls
 
 ### 1. Creating Client Per Request

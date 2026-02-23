@@ -472,6 +472,45 @@ with GlideClientSync.create(config) as client:
     # Client automatically closed on exit
 ```
 
+## SCAN vs Valkey-Search
+
+### SCAN for Key Discovery (Scalability Concern)
+
+**❌ SCAN Loop for Pattern-Based Key Lookup**
+```python
+# O(N) full keyspace iteration — degrades as dataset grows
+matched = []
+cursor = "0"
+while True:
+    cursor, keys = await client.scan(cursor, match=pattern, count=100)
+    matched.extend(keys)
+    if cursor == "0":
+        break
+
+# Then individually fetching each matched key compounds the problem
+for key in matched:
+    val = await client.get(key)
+    # ...
+```
+
+**✅ Valkey-Search Index for Efficient Queries**
+```python
+# Create index once at startup
+await client.ft_create(
+    "idx:content",
+    prefix=["content:"],
+    schema=[
+        {"name": "title", "type": "TEXT"},
+        {"name": "tags", "type": "TAG"},
+    ],
+)
+
+# O(K) where K = result count, independent of total keyspace size
+results = await client.ft_search("idx:content", f"@title:{search_term}")
+```
+
+**Note**: SCAN is appropriate for one-time migrations or admin tasks. For application-level search or filtering, Valkey-Search (`FT.*`) scales independently of keyspace size.
+
 ## Common Pitfalls
 
 ### 1. Mixing Async and Sync
