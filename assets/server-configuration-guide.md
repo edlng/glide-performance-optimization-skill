@@ -246,22 +246,24 @@ GlideClientConfiguration config = GlideClientConfiguration.builder()
     .inflightRequestsLimit(2000) // High concurrency
     .build();
 
-// Recommendation: maxclients = 10000 (default) or higher
+// Note: ElastiCache sets maxclients = 65000
+// Individual nodes support up to 65,000 concurrent client connections
 ```
 
-**Calculation**: `maxclients >= (number_of_app_instances × connections_per_instance × 1.5)`
+**Note**: In ElastiCache, `maxclients` has a value of 65,000. For self-managed Valkey/Redis, the default is 10,000 and can be adjusted. When planning capacity, ensure your total connection count across all application instances stays well below this limit.
+
+**Calculation** (for capacity planning): `total_connections = number_of_app_instances × connections_per_instance`
 
 **Example**:
 - 10 app instances
-- 100 connections per instance (inflightRequestsLimit / 10)
-- Safety margin: 1.5x
-- **Recommended**: `maxclients = 1500`
+- 100 connections per instance
+- Total: 1,000 connections (well within the 65,000 limit)
 
 ## ElastiCache-Specific Recommendations
 
 ### Node Type Selection
 
-Based on detected memory usage patterns and throughput requirements:
+Based on detected memory usage patterns and throughput requirements. These recommendations are starting points - actual node type selection should be based on load testing and cost analysis for your specific workload.
 
 **Memory-Intensive Patterns:**
 
@@ -272,12 +274,13 @@ await client.set('data:2', largeObject);
 // ... thousands of keys
 
 // Recommendation: r7g.xlarge or larger (memory-optimized)
+// Note: Actual node size depends on total dataset size and access patterns
 ```
 
-**Recommended Node Types**:
-- **r7g.large**: 13.07 GiB memory, moderate throughput
-- **r7g.xlarge**: 26.32 GiB memory, high throughput
-- **r7g.2xlarge**: 52.82 GiB memory, very high throughput
+**Recommended Node Types** (AWS ElastiCache):
+- **r7g.large**: 13.07 GiB memory
+- **r7g.xlarge**: 26.32 GiB memory
+- **r7g.2xlarge**: 52.82 GiB memory
 
 **Compute-Intensive Patterns:**
 
@@ -288,12 +291,15 @@ for i in range(100000):
     await client.get(f'flag:{i}')
 
 # Recommendation: m7g.large or larger (balanced compute/memory)
+# Note: Throughput depends on operation types and network conditions
 ```
 
-**Recommended Node Types**:
-- **m7g.large**: 7.65 GiB memory, balanced performance
-- **m7g.xlarge**: 15.45 GiB memory, high performance
-- **m7g.2xlarge**: 31.07 GiB memory, very high performance
+**Recommended Node Types** (AWS ElastiCache):
+- **m7g.large**: 6.38 GiB memory
+- **m7g.xlarge**: 12.93 GiB memory
+- **m7g.2xlarge**: 26.04 GiB memory
+
+**Important**: Throughput varies significantly based on operation types (simple vs complex), payload sizes, and network latency. Conduct load testing to validate node type selection.
 
 ### Multi-AZ Deployment
 
@@ -336,7 +342,6 @@ try {
 maxmemory-policy: allkeys-lru
 timeout: 300
 tcp-keepalive: 60
-maxclients: 10000
 ```
 
 **Write-Heavy Workload:**
@@ -346,9 +351,9 @@ maxclients: 10000
 maxmemory-policy: noeviction
 timeout: 60
 tcp-keepalive: 30
-maxclients: 5000
-appendonly: yes  # Enable AOF persistence
 ```
+
+**Note**: In ElastiCache, `appendonly` is not modifiable via parameter groups — ElastiCache manages persistence internally. The `maxclients` parameter is also fixed at 65,000.
 
 **Cache Workload:**
 
@@ -357,7 +362,6 @@ appendonly: yes  # Enable AOF persistence
 maxmemory-policy: allkeys-lfu
 timeout: 300
 tcp-keepalive: 60
-maxclients: 10000
 ```
 
 ### Cluster Mode Configuration
@@ -376,10 +380,12 @@ for (let i = 0; i < 1000000; i++) {
 ```
 
 **Shard Count Guidelines**:
-- **1-10K keys**: 1 shard (standalone)
-- **10K-100K keys**: 2-3 shards
-- **100K-1M keys**: 3-6 shards
-- **1M+ keys**: 6-15 shards
+- **1-10K keys**: 1 shard (standalone) - sufficient for most small applications
+- **10K-100K keys**: 2-3 shards - provides horizontal scaling
+- **100K-1M keys**: 3-6 shards - balances distribution and management overhead
+- **1M+ keys**: 6-15 shards - for large-scale deployments
+
+**Note**: These are starting points. Actual shard count should consider throughput requirements, data distribution patterns, and operational complexity. More shards increase management overhead but improve horizontal scalability.
 
 **Replicas Per Shard:**
 
@@ -413,7 +419,6 @@ Parameter Group:
   maxmemory-policy: allkeys-lru
   timeout: 300
   tcp-keepalive: 60
-  maxclients: 10000
 ```
 
 **Client Configuration:**
@@ -448,8 +453,6 @@ Parameter Group:
   maxmemory-policy: noeviction
   timeout: 60
   tcp-keepalive: 30
-  maxclients: 15000
-  appendonly: yes
 ```
 
 **Client Configuration:**
@@ -487,7 +490,6 @@ Parameter Group:
   maxmemory-policy: volatile-lru
   timeout: 300
   tcp-keepalive: 60
-  maxclients: 5000
 ```
 
 **Client Configuration:**
@@ -521,7 +523,6 @@ Parameter Group:
   maxmemory-policy: allkeys-lru
   timeout: 60
   tcp-keepalive: 30
-  maxclients: 1000
 ```
 
 **Client Configuration:**
@@ -546,8 +547,8 @@ After applying server configuration changes, monitor these metrics:
 
 1. **Memory Usage**: Should stay below 80% of `maxmemory`
 2. **Evictions**: Should be minimal for `noeviction`, expected for LRU/LFU
-3. **Connection Count**: Should stay below `maxclients`
-4. **CPU Utilization**: Should stay below 70% under normal load
+3. **Connection Count**: Should stay well below 65,000 (ElastiCache fixed `maxclients`)
+4. **CPU Utilization**: Should stay below 90% of available CPU (for single-threaded Valkey/Redis, calculate as 90 / number_of_cores for the `CPUUtilization` metric; use `EngineCPUUtilization` directly on 4+ vCPU nodes)
 5. **Network Throughput**: Should not saturate node capacity
 6. **Replication Lag**: Should be <1 second for read replicas
 
@@ -560,19 +561,19 @@ Alarms:
     Action: Alert + consider scaling up
   
   - Metric: CPUUtilization
-    Threshold: 70%
+    Threshold: 90% / number_of_cores (e.g., 45% for 2-vCPU nodes)
     Action: Alert + consider scaling up
   
   - Metric: CurrConnections
-    Threshold: 80% of maxclients
-    Action: Alert + increase maxclients
+    Threshold: 80% of 65,000 (ElastiCache default maxclients)
+    Action: Alert + investigate connection leaks or scale out
   
   - Metric: Evictions
-    Threshold: >100/min (for noeviction policy)
+    Threshold: >0 (for noeviction policy); set application-appropriate threshold for LRU/LFU policies
     Action: Alert + increase memory
   
   - Metric: ReplicationLag
-    Threshold: >1000ms
+    Threshold: >1 (seconds)
     Action: Alert + investigate replication issues
 ```
 

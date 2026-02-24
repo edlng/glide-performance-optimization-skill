@@ -4,7 +4,7 @@ Expert guidance for optimizing Valkey GLIDE clients across Node.js, Python, Java
 
 ## Features
 
-- **Progressive Disclosure**: Loads only relevant language-specific patterns, reducing context usage by 60-85%
+- **Progressive Disclosure**: Loads only relevant language-specific patterns, significantly reducing context usage
 - **Multi-Language Support**: Node.js, Python, Java, Go, and PHP
 - **Automatic Language Detection**: Detects language from file extensions, imports, and syntax
 - **Actionable Recommendations**: Provides before/after code examples and configuration guidance
@@ -111,7 +111,7 @@ The skill uses progressive disclosure to minimize context usage:
 - `assets/server-configuration-guide.md` - Valkey/ElastiCache infrastructure optimization
 - `assets/config-templates/` - Production-ready configuration examples
 
-**Context Efficiency**: Reviewing Node.js code loads only Node.js patterns. Python/Java/Go/PHP patterns remain unloaded.
+**Context Efficiency**: Reviewing Node.js code loads only Node.js patterns. Python/Java/Go/PHP patterns remain unloaded, reducing the amount of context loaded into your AI tool.
 
 ## Common Anti-Patterns Detected
 
@@ -157,33 +157,29 @@ glide-performance-skill/
 
 ## Performance Impact
 
-Typical improvements when moving from anti-patterns to recommended patterns:
+Typical improvements when moving from anti-patterns to recommended patterns. Actual results vary significantly based on your infrastructure, network conditions, data sizes, and workload characteristics. Always benchmark in your specific environment.
 
 | Optimization | Latency Impact | Throughput Impact | Complexity |
 |--------------|----------------|-------------------|------------|
-| Connection Reuse | Eliminates per-request overhead | Significant increase | Low |
-| Batching | Reduces to single roundtrip | Scales with batch size | Low-Medium |
-| AZ Affinity | Lower same-AZ latency | Moderate increase | Medium |
-| Async Patterns | Reduces wall-clock time | Scales with concurrency | Medium |
-| Cluster Hash Tags | Fewer cross-shard hops | Moderate increase | Medium-High |
+| Connection Reuse | Eliminates connection overhead (typically 10-100ms per request) | Can increase throughput 10-100x | Low |
+| Batching | Reduces N roundtrips to 1 (scales with network latency) | Scales linearly with batch size | Low-Medium |
+| AZ Affinity | Reduces cross-AZ latency | Moderate increase for read-heavy workloads | Medium |
+| Async Patterns | Reduces wall-clock time for independent operations | Scales with concurrency level | Medium |
+| Cluster Hash Tags | Reduces cross-shard operations | Moderate increase for multi-key operations | Medium-High |
 
-**Note**: Actual results vary based on your specific use case. Always benchmark to measure impact.
+**Important**: These are general guidelines based on common scenarios. Your results will depend on factors including network topology, server configuration, operation types, and data sizes. Benchmark before and after optimization to measure actual impact.
 
 ## Supported GLIDE Versions
 
 - Node.js: `@valkey/valkey-glide` v1.0.0+
 - Python: `valkey-glide` v1.0.0+
-- Java: `glide-for-redis` v1.0.0+
+- Java: `io.valkey:valkey-glide` v1.0.0+
 - Go: `valkey-glide/go` v1.0.0+
 - PHP: `valkey-glide-php` v1.0.0+
 
 ## Contributing
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-## License
-
-This skill is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for details.
+Contributions are welcome!
 
 ## Additional Resources
 

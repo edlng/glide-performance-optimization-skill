@@ -35,7 +35,7 @@ This skill automatically detects the programming language you're working with an
   - `reference/go-patterns.md` - Go specific guidance
   - `reference/php-patterns.md` - PHP specific guidance
 
-**Context Efficiency**: Reviewing Node.js code loads only Node.js patterns. Python/Java/Go patterns remain unloaded, reducing context usage.
+**Context Efficiency**: Reviewing Node.js code loads only Node.js patterns. Python/Java/Go/PHP patterns remain unloaded, reducing the amount of context loaded into your AI tool.
 
 ## When to Use This Skill
 
@@ -164,11 +164,11 @@ These anti-patterns cause performance issues regardless of language:
 - Atomic operations → Transaction (atomic)
 - Bulk data operations (MGET, MSET)
 
-**Impact**: Reduces latency from N × roundtrip to 1 × roundtrip.
+**Impact**: Reduces latency from N × roundtrip to 1 × roundtrip. For example, with 5ms network latency, 10 sequential operations take ~50ms, while a single batched operation takes ~5ms.
 
 **Batch Size Guidelines**:
-- Optimal: 10-100 commands
-- Avoid: >1000 commands or >10MB payload
+- Optimal: 10-100 commands (balances latency reduction with memory usage)
+- Avoid: >1000 commands or >10MB payload (can cause timeouts and memory pressure)
 
 ### 2. Cluster-Aware Operations
 

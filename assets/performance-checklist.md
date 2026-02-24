@@ -5,13 +5,13 @@ Quick reference checklist for reviewing Valkey GLIDE client implementations.
 ## Critical Issues (Fix Immediately)
 
 - [ ] **Client Reuse**: Client created once at startup, NOT per request
-- [ ] **Request Timeout**: Timeout configured (500ms recommended for web apps)
+- [ ] **Request Timeout**: Timeout configured (default is 250ms; 500ms recommended for web apps)
 - [ ] **Error Handling**: Try-catch blocks around client operations
 - [ ] **Connection Backoff**: Retry strategy configured for resilience
 
 ## High-Impact Optimizations
 
-- [ ] **Batching**: Pipeline/transaction used for bulk operations (10-100 commands)
+- [ ] **Batching**: Batch used for bulk operations (10-100 commands, `is_atomic=true` for transactions, `is_atomic=false` for pipelines)
 - [ ] **Sequential Operations**: Replaced with batching or concurrent execution
 - [ ] **Blocking Commands**: Dedicated client for BLPOP/BRPOP/BLMOVE/etc.
 - [ ] **Large Batches**: Batch sizes kept under 1000 commands
@@ -38,7 +38,7 @@ Quick reference checklist for reviewing Valkey GLIDE client implementations.
 ## Configuration
 
 - [ ] **Timeout Settings**: Appropriate for use case (20-50ms real-time, 200-500ms web, 1000-5000ms batch)
-- [ ] **Connection Pool**: inflightRequestsLimit tuned for throughput
+- [ ] **Connection Pool**: inflightRequestsLimit tuned for throughput (GLIDE uses a single multiplexed connection, not a traditional pool)
 - [ ] **Client Name**: Descriptive name set for debugging
 - [ ] **Lazy Connect**: Enabled for serverless/Lambda deployments
 
@@ -77,7 +77,7 @@ Quick reference checklist for reviewing Valkey GLIDE client implementations.
 
 ### PHP
 - [ ] Client created once, reused via global/static variable
-- [ ] MULTI/EXEC or pipeline for bulk operations
+- [ ] MULTI/EXEC or Batch for bulk operations
 - [ ] ValkeyGlideException try-catch around operations
 - [ ] Reconnection strategy with exponential backoff
 - [ ] lazy_connect enabled for serverless/PHP-FPM cold starts
@@ -99,19 +99,23 @@ Quick reference checklist for reviewing Valkey GLIDE client implementations.
 
 ## Performance Targets
 
+These targets are general guidelines based on typical deployments. Your actual performance will vary based on infrastructure, network conditions, data sizes, and operation types. Always benchmark in your specific environment.
+
 | Metric | Target | Use Case |
 |--------|--------|----------|
-| P99 Latency | <10ms | Real-time applications |
-| P99 Latency | <50ms | Web applications |
+| P99 Latency | <10ms | Real-time applications (requires low-latency network) |
+| P99 Latency | <50ms | Web applications (typical network conditions) |
 | P99 Latency | <500ms | Background jobs |
-| Throughput | >10K ops/sec | Standard workloads |
-| Throughput | >100K ops/sec | High-performance workloads |
+| Throughput | >10K ops/sec | Standard workloads (single node) |
+| Throughput | >100K ops/sec | High-performance workloads (cluster mode, optimized) |
 | Connection Errors | <0.1% | All workloads |
 | Timeout Rate | <1% | All workloads |
 
+**Note**: These targets assume properly configured infrastructure, optimized client settings, and appropriate network conditions. Benchmark your specific workload to establish realistic targets.
+
 ## Quick Wins (5-Minute Fixes)
 
-1. **Add Request Timeout**: Set `requestTimeout: 500` in configuration
+1. **Add Request Timeout**: Set `requestTimeout: 500` in configuration (default is 250ms)
 2. **Enable Client Reuse**: Move client creation to startup
 3. **Add Error Handling**: Wrap operations in try-catch
 4. **Configure Retry**: Add connectionBackoff configuration
